@@ -131,23 +131,51 @@ class Game {
         return arr;
     }
 
+    isDataChangedAfterShift(oldData, newData) {
+        for (let i = 0; i < GAME_SIZE; i++) {
+            for (let j = 0; j < GAME_SIZE; j++) {
+                if (oldData[i][j] != newData[i][j]) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     advance(command) {
+        let originalData = this.data.map(row => [...row]);
+        let reverse = false;
         switch (command) {
+            case Direction.RIGHT:
+                reverse = true;
             case Direction.LEFT:
                 for (let i = 0; i < GAME_SIZE; i++) {
-                    this.game[i] = this.shiftBlock(game[i], false);
+                    this.data[i] = this.shiftBlock(this.data[i], reverse);
                 }
                 break;
 
-            case Direction.RIGHT:
-                for (let i = 0; i < GAME_SIZE; i++) {
-                    game[i] = this.shiftBlock(game[i], true);
-                }
-                break;
-
+            case Direction.DOWN:
+                reverse = true;
             case Direction.UP:
+                for (let i = 0; i < GAME_SIZE; i++) {
+                    let dataColumn = [];
 
+                    //取出column
+                    for (let j = 0; j < GAME_SIZE; j++) {
+                        dataColumn.push(this.data[j][i]);
+                    }
+                    let dataColumnAfterShift = this.shiftBlock(dataColumn, reverse);
+
+                    //排列完再更新到data
+                    for (let j = 0; j < GAME_SIZE; j++) {
+                        this.data[j][i] = dataColumnAfterShift[j];
+                    }
+                }
+                break;
+        }
+
+        if (this.isDataChangedAfterShift(originalData, this.data)) {
+            this.generateNewBlock();
         }
     }
 }
@@ -341,9 +369,19 @@ let view = new View(game, container);
 view.drawGame();
 
 document.onkeydown = function (event) {
-    if (event.key == "ArrowLeft") {
-        game.advance(Direction.LEFT)
-    } else if (event.key == "ArrowRight") {
-        game.advance(Direction.RIGHT);
+    switch (event.key) {
+        case "ArrowLeft":
+            game.advance(Direction.LEFT);
+            break;
+        case "ArrowRight":
+            game.advance(Direction.RIGHT);
+            break;
+        case "ArrowUp":
+            game.advance(Direction.UP);
+            break;
+        case "ArrowDown":
+            game.advance(Direction.DOWN);
+            break;
     }
+    view.drawGame();
 }
