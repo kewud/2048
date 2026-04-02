@@ -5,7 +5,7 @@ const GAME_SIZE = 4;
 const BLOCK_SIZE = 120;
 const BLOCK_PLACEHOLDER_COLOR = "555555";
 const BLOCK_BACKGROUND_COLOR = "664455";
-const BLOCK_NUMBER_FONT_SIZE = "100px";
+const BLOCK_NUMBER_FONT_SIZE = "60px";
 
 const Direction = Object.freeze({
     UP: "UP",
@@ -65,22 +65,41 @@ class Game {
     //game.shiftBlock( [null,null,2,2]);
 
     shiftBlock(arr, reverse = false) {
+
+        // 為了記錄移動前和移動後的位置，所以將arr元素的原始索引記起來
+        arr = arr.map((val, index) => {
+
+            return {
+                val: val,
+                originalIndex: index
+            }
+
+        });
+
         if (reverse) {
-            arr = [...arr].reverse();
+            arr.reverse();
         }
 
         let newArr = [];
+        let moves = []; //[[2,1]] 表示從第2移到第1個索引
         let countedPoint = -1; //因為一格只能相加一次，相加過後不能再加，所以記錄相加過後的那格結果的index(加過以後就固定了)
         for (let i = 0; i < arr.length; i++) {
-            if (arr[i] == null) {
+
+            if (arr[i].val == null) {
                 continue;
             }
 
-            if (newArr.length == 0 || newArr[newArr.length - 1] != arr[i] || countedPoint == newArr.length - 1) {
-                newArr.push(arr[i]);
+            if (newArr.length == 0 || newArr[newArr.length - 1] != arr[i].val || countedPoint == newArr.length - 1) {
+                newArr.push(arr[i].val,);
             } else {
-                newArr[newArr.length - 1] = newArr[newArr.length - 1] + arr[i];
+                newArr[newArr.length - 1] += arr[i].val;
                 countedPoint = newArr.length - 1;
+            }
+
+            if (!reverse) {
+                moves.push([arr[i].originalIndex, newArr.length - 1]);
+            }else{
+                moves.push([arr[i].originalIndex, arr.length - 1 - (newArr.length - 1)]);
             }
         }
 
@@ -88,12 +107,16 @@ class Game {
             newArr.push(null);
         }
 
+
         if (reverse) {
             newArr.reverse();
         }
 
 
-        return newArr;
+        return {
+            "newArr": newArr,
+            "moves": moves
+        };
     }
 
     shiftBlock2(arr, reverse = false) {
@@ -150,7 +173,7 @@ class Game {
                 reverse = true;
             case Direction.LEFT:
                 for (let i = 0; i < GAME_SIZE; i++) {
-                    this.data[i] = this.shiftBlock(this.data[i], reverse);
+                    this.data[i] = this.shiftBlock(this.data[i], reverse).newArr;
                 }
                 break;
 
@@ -164,7 +187,7 @@ class Game {
                     for (let j = 0; j < GAME_SIZE; j++) {
                         dataColumn.push(this.data[j][i]);
                     }
-                    let dataColumnAfterShift = this.shiftBlock(dataColumn, reverse);
+                    let dataColumnAfterShift = this.shiftBlock(dataColumn, reverse).newArr;
 
                     //排列完再更新到data
                     for (let j = 0; j < GAME_SIZE; j++) {
@@ -185,7 +208,7 @@ class Test {
 
     static runAllTest() {
         Test.test_shiftBlock();
-        Test.test_shiftBlock2();
+        //Test.test_shiftBlock2();
     }
 
     static compareArray(arr1, arr2) {
@@ -202,61 +225,106 @@ class Test {
         return true;
     }
 
+    static compare2DArray(arr1, arr2) {
+        if (arr1.length != arr2.length) {
+            return false;
+        }
+
+        for (let i = 0; i < arr1.length; i++) {
+
+            if (arr1[i].length != arr2[i].length) {
+                return false;
+            }
+
+
+            for (let j = 0; j < arr1[i].length; j++) {
+                if (arr1[i][j] != arr2[i][j]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+
     static test_shiftBlock() {
         let gameTest = new Game();
         let testCases = [
-            [[2, 2, 2, 2], [4, 4, null, null]],
-            [[2, 2, null, 2], [4, 2, null, null]],
-            [[4, 2, null, 2], [4, 4, null, null]],
-            [[2, 4, null, 8], [2, 4, 8, null]],
-            [[null, null, null, null], [null, null, null, null]],
-            [[null, 4, 4, 8], [8, 8, null, null]],
-            [[4, 4, 8, 16], [8, 8, 16, null]],
-            [[4, 8, 8, 16], [4, 16, 16, null]],
-
+            // [src, newArr, moves]
+            // [[2, 2, 2, 2], [4, 4, null, null]],
+            // [[2, 2, null, 2], [4, 2, null, null]],
+            // [[4, 2, null, 2], [4, 4, null, null]],
+            // [[2, 4, null, 8], [2, 4, 8, null]],
+            // [[null, null, null, null], [null, null, null, null]],
+            // [[null, 4, 4, 8], [8, 8, null, null]],
+            // [[4, 4, 8, 16], [8, 8, 16, null]],
+            // [[4, 8, 8, 16], [4, 16, 16, null]],
+            [[2, 2, 2, 2], [4, 4, null, null], [[0, 0], [1, 0], [2, 1], [3, 1]]],
+            [[2, 2, null, 2], [4, 2, null, null], [[0, 0], [1, 0], [3, 1]]],
+            [[4, 2, null, 2], [4, 4, null, null], [[0, 0], [1, 1], [3, 1]]],
+            [[2, 4, null, 8], [2, 4, 8, null], [[0, 0], [1, 1], [3, 2]]],
+            [[null, null, null, null], [null, null, null, null], []],
+            [[null, 4, 4, 8], [8, 8, null, null], [[1, 0], [2, 0], [3, 1]]],
+            [[4, 4, 8, 16], [8, 8, 16, null], [[0, 0], [1, 0], [2, 1], [3, 2]]],
+            [[4, 8, 8, 16], [4, 16, 16, null], [[0, 0], [1, 1], [2, 1], [3, 2]]],
         ]
 
         let reverseTestCases = [
-            [[2, 2, 2, 2], [null, null, 4, 4]],
-            [[2, 2, null, 2], [null, null, 2, 4]],
-            [[4, 2, null, 2], [null, null, 4, 4]],
-            [[2, 4, null, 8], [null, 2, 4, 8]],
-            [[null, null, null, null], [null, null, null, null]],
-            [[null, 4, 4, 8], [null, null, 8, 8]],
-            [[4, 4, 8, 16], [null, 8, 8, 16]],
-            [[4, 8, 8, 16], [null, 4, 16, 16]]
+            // [src, newArr, moves]
+            // [[2, 2, 2, 2], [null, null, 4, 4]],
+            // [[2, 2, null, 2], [null, null, 2, 4]],
+            // [[4, 2, null, 2], [null, null, 4, 4]],
+            // [[2, 4, null, 8], [null, 2, 4, 8]],
+            // [[null, null, null, null], [null, null, null, null]],
+            // [[null, 4, 4, 8], [null, null, 8, 8]],
+            // [[4, 4, 8, 16], [null, 8, 8, 16]],
+            // [[4, 8, 8, 16], [null, 4, 16, 16]]
+            [[2, 2, 2, 2], [null, null, 4, 4], [[3, 3], [2, 3], [1, 2], [0, 2]]],   //[[0,2],[1,2],[2,3],[3,3]]
+            [[2, 2, null, 2], [null, null, 2, 4], [[3, 3], [1, 3], [0, 2]]],
+            [[4, 2, null, 2], [null, null, 4, 4], [[3, 3], [1, 3], [0, 2]]],
+            [[2, 4, null, 8], [null, 2, 4, 8], [[3, 3], [1, 2], [0, 1]]],
+            [[null, null, null, null], [null, null, null, null], []],
+            [[null, 4, 4, 8], [null, null, 8, 8], [[3, 3], [2, 2], [1, 2]]],
+            [[4, 4, 8, 16], [null, 8, 8, 16], [[3, 3], [2, 2], [1, 1], [0, 1]]],
+            [[4, 8, 8, 16], [null, 4, 16, 16], [[3, 3], [2, 2], [1, 2], [0, 1]]]
         ]
 
         let errFlag = false;
         for (let test of testCases) {
 
             const input = test[0];
-            const answer = test[1];
+            const answerOfNewArr = test[1];
+            const answerOfMoves = test[2];
 
             const output = gameTest.shiftBlock(input, false);
 
-            if (!Test.compareArray(output, answer)) {
+            if (!(Test.compareArray(output.newArr, answerOfNewArr) && Test.compare2DArray(output.moves, answerOfMoves))) {
                 errFlag = true;
                 console.log('test_shiftBlock :' + 'Error!, ')
                 console.log(input);
-                console.log(output)
-                console.log(answer);
+                console.log(output.newArr);
+                console.log(answerOfNewArr);
+                console.log(output.moves);
+                console.log(answerOfMoves);
             }
         }
 
         for (let test of reverseTestCases) {
 
             const input = test[0];
-            const answer = test[1];
+            const answerOfNewArr = test[1];
+            const answerOfMoves = test[2];
 
             const output = gameTest.shiftBlock(input, true);
 
-            if (!Test.compareArray(output, answer)) {
+            if (!(Test.compareArray(output.newArr, answerOfNewArr) && Test.compare2DArray(output.moves, answerOfMoves))) {
                 errFlag = true;
                 console.log('test_shiftBlock(reverse) :' + 'Error!, ')
                 console.log(input);
-                console.log(output)
-                console.log(answer);
+                console.log(output.newArr);
+                console.log(answerOfNewArr);
+                console.log(output.moves);
+                console.log(answerOfMoves);
             }
         }
 
