@@ -6,6 +6,8 @@ const BLOCK_SIZE = 120;
 const BLOCK_PLACEHOLDER_COLOR = "555555";
 const BLOCK_BACKGROUND_COLOR = "664455";
 const BLOCK_NUMBER_FONT_SIZE = "60px";
+const FRAME_PER_SECOND = 30;
+const ANIMATION_TIME = 0.1;
 
 const Direction = Object.freeze({
     UP: "UP",
@@ -98,7 +100,7 @@ class Game {
 
             if (!reverse) {
                 moves.push([arr[i].originalIndex, newArr.length - 1]);
-            }else{
+            } else {
                 moves.push([arr[i].originalIndex, arr.length - 1 - (newArr.length - 1)]);
             }
         }
@@ -111,6 +113,7 @@ class Game {
         if (reverse) {
             newArr.reverse();
         }
+
 
 
         return {
@@ -166,14 +169,20 @@ class Game {
     }
 
     advance(command) {
-        let originalData = this.data.map(row => [...row]);
+        let originalData = this.data.map(innerArray => [...innerArray]);
         let reverse = false;
+        let moves = [];
         switch (command) {
             case Direction.RIGHT:
                 reverse = true;
             case Direction.LEFT:
                 for (let i = 0; i < GAME_SIZE; i++) {
-                    this.data[i] = this.shiftBlock(this.data[i], reverse).newArr;
+                    let { newArr, moves: rowMove } = this.shiftBlock(this.data[i], reverse);
+
+                    this.data[i] = newArr;
+                    for (let move of rowMove) {
+                        moves.push([[i, move[0]], [i, move[1]]]);
+                    }
                 }
                 break;
 
@@ -187,7 +196,13 @@ class Game {
                     for (let j = 0; j < GAME_SIZE; j++) {
                         dataColumn.push(this.data[j][i]);
                     }
-                    let dataColumnAfterShift = this.shiftBlock(dataColumn, reverse).newArr;
+
+                    let { newArr, moves: colMove } = this.shiftBlock(dataColumn, reverse);
+                    let dataColumnAfterShift = newArr;
+
+                    for (let move of colMove) {
+                        moves.push([[move[0], i], [move[1], i]]);
+                    }
 
                     //排列完再更新到data
                     for (let j = 0; j < GAME_SIZE; j++) {
@@ -200,6 +215,8 @@ class Game {
         if (this.isDataChangedAfterShift(originalData, this.data)) {
             this.generateNewBlock();
         }
+
+        return moves;
     }
 }
 
@@ -371,6 +388,7 @@ class Test {
 class View {
     constructor(game, container) {
         this.game = game;
+        this.blocks = [];
         this.container = container;
         this.initializeContainer();
     }
@@ -381,32 +399,50 @@ class View {
         this.container.style.backgroundColor = CANVAS_BACKGROUND_COLOR;
         this.container.style.display = "inline-block";
         this.container.style.position = "relative";
+        this.container.style.borderRadius = "15px";
+        this.container.style.zIndex = 1;
     }
 
     drawGame() {
+        this.container.innerHTML = "";
+        this.blocks = [];
         for (let i = 0; i < GAME_SIZE; i++) {
+            let tmp = [];
             for (let j = 0; j < GAME_SIZE; j++) {
+                this.drawBackgroundBlock(i, j, BLOCK_PLACEHOLDER_COLOR);
                 if (this.game.data[i][j]) {
-                    this.drawBlock(i, j, this.game.data[i][j]);
-                } else {
-                    this.drawBackgroundBlock(i, j, BLOCK_PLACEHOLDER_COLOR);
+                    let block = this.drawBlock(i, j, this.game.data[i][j]);
+                    tmp.push(block);
+                }else{
+                    tmp.push(null);
                 }
             }
+            this.blocks.push(tmp);
         }
     }
 
     drawBackgroundBlock(i, j, color) {
         let block = document.createElement("div");
-        const gap_size = (CANVAS_SIZE - GAME_SIZE * BLOCK_SIZE) / (GAME_SIZE + 1)
 
         block.style.height = BLOCK_SIZE;
         block.style.width = BLOCK_SIZE;
         block.style.backgroundColor = color;
         block.style.position = "absolute";
-        block.style.top = (i + 1) * gap_size + i * BLOCK_SIZE;
-        block.style.left = (j + 1) * gap_size + j * BLOCK_SIZE;
+        // block.style.top = (i + 1) * gap_size + i * BLOCK_SIZE;
+        // block.style.left = (j + 1) * gap_size + j * BLOCK_SIZE;
+        block.style.top = this.gridToPosition(i, j)[0];
+        block.style.left = this.gridToPosition(i, j)[1];
+        block.style.borderRadius = "10px";
+        block.style.zIndex = 3;
         this.container.append(block);
         return block;
+    }
+
+    gridToPosition(i, j) {
+        const gap_size = (CANVAS_SIZE - GAME_SIZE * BLOCK_SIZE) / (GAME_SIZE + 1)
+        let top = (i + 1) * gap_size + i * BLOCK_SIZE;
+        let left = (j + 1) * gap_size + j * BLOCK_SIZE;
+        return [top, left];
     }
 
     drawBlock(i, j, number) {
@@ -421,12 +457,37 @@ class View {
         block.style.display = "flex";
         block.style.justifyContent = "center";
         block.style.alignItems = "center";
+        block.style.zIndex = 5;
 
         span.append(text);
         block.append(span);
+        return block;
+    }
 
+    animate(moves) {
+        this.doFrame(moves, 0, ANIMATION_TIME);
+    }
 
+    doFrame(moves, currTime, totalTime) {
+        if (currTime < totalTime) {
+            setTimeout(() => {
+                this.doFrame(moves, currTime + 1 / FRAME_PER_SECOND, totalTime);
+            }, 1 / FRAME_PER_SECOND * 1000);
 
+            for (let move of moves) {
+                let block = this.blocks[[move[0][0]]][move[0][1]];
+                let origin = this.gridToPosition(move[0][0], move[0][1]);
+                let destination = this.gridToPosition(move[1][0], move[1][1]);
+                let currPosition = [
+                    origin[0] + currTime / totalTime * (destination[0] - origin[0]),
+                    origin[1] + currTime / totalTime * (destination[1] - origin[1])
+                ]
+                block.style.top = currPosition[0];
+                block.style.left = currPosition[1];
+            }
+        } else {
+            this.drawGame();
+        }
     }
 }
 
@@ -437,19 +498,23 @@ let view = new View(game, container);
 view.drawGame();
 
 document.onkeydown = function (event) {
+    let moves = null;
     switch (event.key) {
         case "ArrowLeft":
-            game.advance(Direction.LEFT);
+            moves = game.advance(Direction.LEFT);
             break;
         case "ArrowRight":
-            game.advance(Direction.RIGHT);
+            moves = game.advance(Direction.RIGHT);
             break;
         case "ArrowUp":
-            game.advance(Direction.UP);
+            moves = game.advance(Direction.UP);
             break;
         case "ArrowDown":
-            game.advance(Direction.DOWN);
+            moves = game.advance(Direction.DOWN);
             break;
     }
-    view.drawGame();
+    if(moves){
+        view.animate(moves);
+    }
+
 }
