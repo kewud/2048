@@ -219,26 +219,23 @@ class Game {
         return moves;
     }
 
-    static isGameOver(data) {
+    isGameOver() {
         //先檢查row
         for (let i = 0; i < GAME_SIZE; i++) {
             let lastNumber = null;
             for (let j = 0; j < GAME_SIZE; j++) {
+
+                if (this.data[i][j] == null) return false; //只要有null存在表示可以再移動，所以就還沒game over
+
                 if (lastNumber == null) {
-                    lastNumber = data[i][j];
+                    lastNumber = this.data[i][j];
                     continue;
                 }
-                console.log('row');
-                console.log(i);
-                console.log(j);
-                console.log(data[i][j]);
-                console.log(lastNumber);
 
-
-                if (data[i][j] == lastNumber) {
+                if (this.data[i][j] == lastNumber) {
                     return false;
                 }
-                lastNumber = data[i][j];
+                lastNumber = this.data[i][j];
             }
         }
 
@@ -246,21 +243,16 @@ class Game {
         for (let i = 0; i < GAME_SIZE; i++) {
             let lastNumber = null;
             for (let j = 0; j < GAME_SIZE; j++) {
+
                 if (lastNumber == null) {
-                    lastNumber = data[j][i];
+                    lastNumber = this.data[j][i];
                     continue;
                 }
 
-                console.log('column');
-                console.log(i);
-                console.log(j);
-                console.log(data[j][i]);
-                console.log(lastNumber);
-
-                if (data[j][i] == lastNumber) {
+                if (this.data[j][i] == lastNumber) {
                     return false;
                 }
-                lastNumber = data[j][i];
+                lastNumber = this.data[j][i];
             }
         }
 
@@ -550,9 +542,12 @@ let view = new View(game, container);
 view.drawGame();
 
 let isAnimating = false;
+let isGameOver = false;
 document.onkeydown = async function (event) {
 
-    if (isAnimating) return;
+    if (isAnimating || isGameOver) return;
+
+
 
     let moves = null;
     switch (event.key) {
@@ -579,9 +574,15 @@ document.onkeydown = async function (event) {
             console.error(error);
         } finally {
             isAnimating = false;
-            // if (Game.isGameOver(game.data)) {
-            //     alert('Game over!!');
-            // };
+            if (game.isGameOver()) {
+                isGameOver = true;
+                //alert跳太快，所以延遲一下等動畫跑完再跳
+                setTimeout(()=>{
+                    alert('game over!!');
+                }, 100);
+            };
         }
     }
 }
+
+
