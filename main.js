@@ -218,6 +218,54 @@ class Game {
 
         return moves;
     }
+
+    static isGameOver(data) {
+        //先檢查row
+        for (let i = 0; i < GAME_SIZE; i++) {
+            let lastNumber = null;
+            for (let j = 0; j < GAME_SIZE; j++) {
+                if (lastNumber == null) {
+                    lastNumber = data[i][j];
+                    continue;
+                }
+                console.log('row');
+                console.log(i);
+                console.log(j);
+                console.log(data[i][j]);
+                console.log(lastNumber);
+
+
+                if (data[i][j] == lastNumber) {
+                    return false;
+                }
+                lastNumber = data[i][j];
+            }
+        }
+
+        //再檢查column
+        for (let i = 0; i < GAME_SIZE; i++) {
+            let lastNumber = null;
+            for (let j = 0; j < GAME_SIZE; j++) {
+                if (lastNumber == null) {
+                    lastNumber = data[j][i];
+                    continue;
+                }
+
+                console.log('column');
+                console.log(i);
+                console.log(j);
+                console.log(data[j][i]);
+                console.log(lastNumber);
+
+                if (data[j][i] == lastNumber) {
+                    return false;
+                }
+                lastNumber = data[j][i];
+            }
+        }
+
+        return true;
+    }
 }
 
 //Test
@@ -413,7 +461,7 @@ class View {
                 if (this.game.data[i][j]) {
                     let block = this.drawBlock(i, j, this.game.data[i][j]);
                     tmp.push(block);
-                }else{
+                } else {
                     tmp.push(null);
                 }
             }
@@ -465,13 +513,16 @@ class View {
     }
 
     animate(moves) {
-        this.doFrame(moves, 0, ANIMATION_TIME);
+        return new Promise((resolve) => {
+            this.doFrame(moves, 0, ANIMATION_TIME, resolve);
+        })
+
     }
 
-    doFrame(moves, currTime, totalTime) {
+    doFrame(moves, currTime, totalTime, onComplete) {
         if (currTime < totalTime) {
             setTimeout(() => {
-                this.doFrame(moves, currTime + 1 / FRAME_PER_SECOND, totalTime);
+                this.doFrame(moves, currTime + 1 / FRAME_PER_SECOND, totalTime, onComplete);
             }, 1 / FRAME_PER_SECOND * 1000);
 
             for (let move of moves) {
@@ -487,6 +538,7 @@ class View {
             }
         } else {
             this.drawGame();
+            onComplete();
         }
     }
 }
@@ -497,7 +549,11 @@ let game = new Game();
 let view = new View(game, container);
 view.drawGame();
 
-document.onkeydown = function (event) {
+let isAnimating = false;
+document.onkeydown = async function (event) {
+
+    if (isAnimating) return;
+
     let moves = null;
     switch (event.key) {
         case "ArrowLeft":
@@ -513,8 +569,19 @@ document.onkeydown = function (event) {
             moves = game.advance(Direction.DOWN);
             break;
     }
-    if(moves){
-        view.animate(moves);
-    }
 
+    if (moves) {
+        isAnimating = true;
+
+        try {
+            await view.animate(moves);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            isAnimating = false;
+            // if (Game.isGameOver(game.data)) {
+            //     alert('Game over!!');
+            // };
+        }
+    }
 }
