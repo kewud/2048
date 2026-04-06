@@ -35,6 +35,7 @@ function writeLog(...str) {
 class Game {
     constructor() {
         this.data = [];
+        this.score = 0;
         this.initializeData();
     }
 
@@ -49,6 +50,8 @@ class Game {
         }
         this.generateNewBlock();
         this.generateNewBlock();
+
+        this.score = 0;
     }
 
     generateNewBlock() {
@@ -96,6 +99,7 @@ class Game {
             } else {
                 newArr[newArr.length - 1] += arr[i].val;
                 countedPoint = newArr.length - 1;
+                this.score += arr[i].val * 2;
             }
 
             if (!reverse) {
@@ -426,10 +430,11 @@ class Test {
 
 //View
 class View {
-    constructor(game, container) {
+    constructor(game, container, score) {
         this.game = game;
         this.blocks = [];
         this.container = container;
+        this.score = score;
         this.initializeContainer();
     }
 
@@ -459,6 +464,8 @@ class View {
             }
             this.blocks.push(tmp);
         }
+
+        this.score.textContent = "Score: " + this.game.score;
     }
 
     drawBackgroundBlock(i, j, color) {
@@ -537,8 +544,9 @@ class View {
 
 //Controller
 let container = document.getElementById("game-container");
+let score = document.getElementById("score");
 let game = new Game();
-let view = new View(game, container);
+let view = new View(game, container, score);
 view.drawGame();
 
 let isAnimating = false;
@@ -577,7 +585,7 @@ document.onkeydown = async function (event) {
             if (game.isGameOver()) {
                 isGameOver = true;
                 //alert跳太快，所以延遲一下等動畫跑完再跳
-                setTimeout(()=>{
+                setTimeout(() => {
                     alert('game over!!');
                 }, 100);
             };
